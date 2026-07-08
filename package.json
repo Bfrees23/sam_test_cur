@@ -7,9 +7,20 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["game", "mmorpg", "lineage2", "rpg"],
-  "license": "MIT"
+  "keywords": [
+    "game",
+    "mmorpg",
+    "lineage2",
+    "rpg"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
 }

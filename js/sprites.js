@@ -113,10 +113,24 @@ export function drawTerrain(ctx, zone, cx, cy, w, h) {
         }
       }
 
-      // Tile border
+      // Tile border + path cracks
       ctx.fillStyle = 'rgba(0,0,0,0.08)';
       ctx.fillRect(sx, sy + grid - 1, grid, 1);
       ctx.fillRect(sx + grid - 1, sy, 1, grid);
+
+      // Worn path between tiles
+      if (h1 > 0.4 && h1 < 0.48) {
+        ctx.fillStyle = shade(ground, -12);
+        ctx.fillRect(sx + grid / 2 - 4, sy, 8, grid);
+      }
+
+      // Small puddles in ruins/dark zones
+      if (zone.id !== 'talking_island' && h1 > 0.75 && h1 < 0.8) {
+        ctx.fillStyle = 'rgba(60,80,120,0.25)';
+        ctx.beginPath();
+        ctx.ellipse(sx + 24, sy + 28, 10, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 

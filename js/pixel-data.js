@@ -49,7 +49,7 @@ function buildPlayerFrames(raceId, classId) {
 
   const f0 = buildHumanoidFrame(weapon, 0, classId === 'cleric');
   const f1 = buildHumanoidFrame(weapon, 1, classId === 'cleric');
-  return { palette: pal, frames: [f0, f1], w: 20, h: 24, scale: 2.8 };
+  return { palette: pal, frames: [f0, f1], w: 20, h: 24, scale: 3.4 };
 }
 
 function buildHumanoidFrame(weapon, frame, hasShield) {
@@ -125,7 +125,7 @@ export function getPlayerSprite(raceId, classId) {
 // ===== MONSTER SPRITES =====
 export const MONSTER_SPRITES = {
   gremlin: {
-    w: 18, h: 20, scale: 2.6,
+    w: 18, h: 20, scale: 3.0,
     palette: {
       K: OUTLINE, G: '#6aad6a', g: '#4a8c59', d: '#2a6a3a',
       E: '#ff4444', e: '#cc2222', B: '#553311', b: '#442200',
@@ -484,7 +484,7 @@ export const MONSTER_SPRITES = {
   },
 
   wyrm: {
-    w: 40, h: 32, scale: 2.2,
+    w: 40, h: 32, scale: 2.8,
     palette: {
       K: OUTLINE, D: '#cc2222', d: '#991111', x: '#660000',
       E: '#ff8800', e: '#ff4400', W: '#aa1111', w: '#880000',

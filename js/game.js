@@ -6,11 +6,18 @@ import {
   drawTerrain, drawPortal, drawPlayer, drawMonster, drawNpc,
   drawProjectile, drawParticle, drawMoveMarker,
 } from './sprites.js';
+import { createNetwork } from './network.js';
+import {
+  drawParallax, generateZoneDecorations, drawDecorations,
+  initAmbientParticles, updateAmbientParticles, drawAmbientParticles,
+  drawRemoteSkillFx,
+} from './world-art.js';
 
 const BASE = new URL('./', window.location.href).href;
 
 let GAME_DATA = null;
 let useServerApi = false;
+let network = null;
 let canvas, ctx, minimapCanvas, minimapCtx;
 let gameRunning = false;
 let lastTime = 0;
@@ -39,6 +46,11 @@ const state = {
   respawnTimer: 0,
   renderTime: 0,
   playerMoving: false,
+  otherPlayers: {},
+  decorations: [],
+  ambientParticles: [],
+  remoteFx: [],
+  chatOpen: false,
 };
 
 // ===== DATA LOADING =====
@@ -212,6 +224,13 @@ function loadZone(zoneId) {
 
   document.getElementById('hud-zone').textContent = zoneData.name;
   addLog(`Вы вошли в ${zoneData.name}`, 'system');
+
+  state.decorations = generateZoneDecorations(zoneData);
+  state.ambientParticles = initAmbientParticles(zoneData);
+
+  if (network?.isConnected()) {
+    network.syncZone(zoneId, state.player.x, state.player.y);
+  }
 }
 
 function createMonster(data, x, y) {
@@ -331,6 +350,8 @@ function useSkill(slotIndex) {
   if (range > 100 && targets.length > 0) {
     state.projectiles.push({ x: p.x, y: p.y, tx: targets[0].x, ty: targets[0].y, life: 0.3, color: skill.element === 'fire' ? '#ff4400' : skill.element === 'water' ? '#4488ff' : '#ffffff' });
   }
+
+  network?.sendSkillFx(skillId, p.x, p.y);
 }
 
 function basicAttack() {
@@ -633,7 +654,9 @@ function render() {
   ctx.fillStyle = zone.bgColor || '#1a1a2a';
   ctx.fillRect(0, 0, w, h);
 
+  drawParallax(ctx, zone, cx, cy, w, h, time);
   drawTerrain(ctx, zone, cx, cy, w, h);
+  drawAmbientParticles(ctx, state.ambientParticles, cx, cy, w, h, time);
 
   for (const conn of (zone.connections || [])) {
     drawPortal(ctx, conn.x - cx, conn.y - cy, conn.label, time);
@@ -642,11 +665,17 @@ function render() {
   // Y-sorted entities for depth
   const entities = [];
 
+  for (const d of state.decorations) {
+    entities.push({ type: 'deco', y: d.y, obj: d });
+  }
   for (const npc of state.npcs) {
     entities.push({ type: 'npc', y: npc.y, obj: npc });
   }
   for (const m of state.monsters) {
     if (m.alive) entities.push({ type: 'monster', y: m.y, obj: m });
+  }
+  for (const op of Object.values(state.otherPlayers)) {
+    entities.push({ type: 'other', y: op.y, obj: op });
   }
   entities.push({ type: 'player', y: p.y, obj: p });
   entities.sort((a, b) => a.y - b.y);
@@ -655,10 +684,24 @@ function render() {
     const sx = ent.obj.x - cx;
     const sy = ent.obj.y - cy;
 
-    if (ent.type === 'npc') {
+    if (ent.type === 'deco') {
+      drawDecorations(ctx, [ent.obj], cx, cy, time);
+    } else if (ent.type === 'npc') {
       drawNpc(ctx, sx, sy, ent.obj, time);
     } else if (ent.type === 'monster') {
       drawMonster(ctx, sx, sy, ent.obj, { isTarget: state.target === ent.obj, time });
+    } else if (ent.type === 'other') {
+      const op = ent.obj;
+      drawPlayer(ctx, sx, sy, {
+        raceId: op.raceId,
+        classId: op.classId,
+        facing: op.facing || 1,
+        animTime: op.animTime || 0,
+        moving: op.moving,
+        isTarget: false,
+        name: op.name,
+        time,
+      });
     } else {
       drawPlayer(ctx, sx, sy, {
         raceId: p.raceId,
@@ -672,6 +715,8 @@ function render() {
       });
     }
   }
+
+  state.remoteFx = state.remoteFx.filter(fx => drawRemoteSkillFx(ctx, fx, cx, cy, time));
 
   for (const proj of state.projectiles) {
     drawProjectile(ctx, proj, cx, cy);
@@ -706,6 +751,12 @@ function renderMinimap() {
   for (const npc of state.npcs) {
     minimapCtx.fillStyle = '#4488ff';
     minimapCtx.fillRect(npc.x * sx - 1, npc.y * sy - 1, 3, 3);
+  }
+
+  // Other players on minimap
+  for (const op of Object.values(state.otherPlayers)) {
+    minimapCtx.fillStyle = '#44aaff';
+    minimapCtx.fillRect(op.x * sx - 1, op.y * sy - 1, 3, 3);
   }
 
   // Player
@@ -784,6 +835,10 @@ function update(dt) {
     if (Math.abs(dx) > 0.1) p.facing = dx < 0 ? -1 : 1;
     p.animTime = (p.animTime || 0) + dt;
   }
+
+  network?.syncPlayer(p, state.playerMoving);
+  network?.interpolateOthers(dt);
+  updateAmbientParticles(state.ambientParticles, state.zone, dt);
 
   // Regen
   if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * dt);
@@ -1176,6 +1231,90 @@ async function showLoadScreen() {
   }
 }
 
+// ===== MULTIPLAYER & CHAT =====
+function initMultiplayer() {
+  if (!useServerApi) {
+    updateMpStatus('solo');
+    return;
+  }
+  network = createNetwork(state, {
+    onStatus: (status, count) => updateMpStatus(status, count),
+    onPlayersUpdate: updateOnlineList,
+    onChat: appendChatMessage,
+    onSkillFx: (msg) => {
+      state.remoteFx.push({ x: msg.x, y: msg.y, startTime: performance.now() });
+    },
+  });
+  network.connect(state.player);
+}
+
+function updateMpStatus(status, count) {
+  const el = document.getElementById('mp-status');
+  if (!el) return;
+  if (status === 'online') {
+    el.textContent = `🟢 Online: ${count || 1}`;
+    el.className = 'mp-online';
+  } else if (status === 'solo') {
+    el.textContent = '🔴 Solo (запустите npm start)';
+    el.className = 'mp-solo';
+  } else {
+    el.textContent = '🟡 Подключение...';
+    el.className = 'mp-connecting';
+  }
+}
+
+function updateOnlineList() {
+  const list = document.getElementById('online-list');
+  if (!list) return;
+  const others = Object.values(state.otherPlayers);
+  if (others.length === 0) {
+    list.innerHTML = '<div class="online-empty">Нет других игроков в зоне</div>';
+    return;
+  }
+  list.innerHTML = others.map(p =>
+    `<div class="online-player"><span class="online-name">${p.name}</span><span class="online-meta">Lv.${p.level} ${p.className || ''}</span></div>`
+  ).join('');
+}
+
+function appendChatMessage(msg) {
+  const log = document.getElementById('chat-log');
+  if (!log) return;
+  const el = document.createElement('div');
+  el.className = `chat-msg chat-${msg.type || 'player'}`;
+  if (msg.type === 'system') {
+    el.textContent = msg.text;
+  } else if (msg.type === 'self') {
+    el.innerHTML = `<span class="chat-name">${msg.name}:</span> ${msg.text}`;
+  } else {
+    el.innerHTML = `<span class="chat-name">${msg.name}:</span> ${msg.text}`;
+  }
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  while (log.children.length > 50) log.removeChild(log.firstChild);
+}
+
+function toggleChat() {
+  const panel = document.getElementById('chat-panel');
+  const input = document.getElementById('chat-input');
+  if (!panel) return;
+  state.chatOpen = !state.chatOpen;
+  panel.classList.toggle('hidden', !state.chatOpen);
+  if (state.chatOpen) { input?.focus(); }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  if (network?.sendChat(text)) {
+    appendChatMessage({ type: 'self', name: state.player.name, text });
+  } else {
+    appendChatMessage({ type: 'system', text: 'Чат доступен только в мультиплеере (npm start)' });
+  }
+  input.value = '';
+}
+
 // ===== GAME LOOP =====
 function startGameLoop() {
   showScreen('screen-game');
@@ -1188,6 +1327,7 @@ function startGameLoop() {
   gameRunning = true;
   lastTime = performance.now();
   updateHud();
+  initMultiplayer();
   requestAnimationFrame(gameLoop);
 }
 
@@ -1212,6 +1352,15 @@ function setupInput() {
     state.keys[e.key.toLowerCase()] = true;
 
     if (document.getElementById('screen-game').classList.contains('active')) {
+      if (state.chatOpen && e.key === 'Enter') {
+        e.preventDefault();
+        sendChatMessage();
+        return;
+      }
+      if (e.key === 'Enter') { e.preventDefault(); toggleChat(); return; }
+      if (state.chatOpen && e.key === 'Escape') { toggleChat(); return; }
+      if (state.chatOpen) return;
+
       if (e.key === 'Tab') { e.preventDefault(); cycleTarget(); }
       if (e.key === '1') useSkill(0);
       if (e.key === '2') useSkill(1);
@@ -1277,7 +1426,14 @@ function setupInput() {
   document.getElementById('btn-save').onclick = saveGame;
   document.getElementById('btn-menu').onclick = () => togglePanel('menu');
   document.getElementById('btn-save-menu').onclick = () => { saveGame(); closeAllPanels(); };
-  document.getElementById('btn-quit').onclick = () => { gameRunning = false; closeAllPanels(); showScreen('screen-title'); };
+  document.getElementById('btn-quit').onclick = () => { gameRunning = false; network?.disconnect(); closeAllPanels(); showScreen('screen-title'); };
+
+  document.getElementById('btn-chat-toggle')?.addEventListener('click', toggleChat);
+  document.getElementById('chat-close')?.addEventListener('click', toggleChat);
+  document.getElementById('chat-send')?.addEventListener('click', sendChatMessage);
+  document.getElementById('chat-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); sendChatMessage(); }
+  });
 
   document.querySelectorAll('.panel-close').forEach(btn => {
     btn.onclick = () => closeAllPanels();
