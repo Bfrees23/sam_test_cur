@@ -1,8 +1,11 @@
 // Lineage II: Reborn — Game Engine
-// All game data loaded from repository via /api/data
-// Saves stored in repository via /api/saves
+// Static mode: game data from data/*.json, saves in localStorage (GitHub Pages)
+// Server mode: optional Node.js API when running npm start locally
+
+const BASE = new URL('./', window.location.href).href;
 
 let GAME_DATA = null;
+let useServerApi = false;
 let canvas, ctx, minimapCanvas, minimapCtx;
 let gameRunning = false;
 let lastTime = 0;
@@ -32,9 +35,42 @@ const state = {
 };
 
 // ===== DATA LOADING =====
+function generateExpTable(maxLevel) {
+  const exp = [0];
+  const sp = [0];
+  for (let lv = 1; lv <= maxLevel; lv++) {
+    exp[lv] = Math.floor(100 * Math.pow(lv, 2.2) + lv * 50);
+    sp[lv] = Math.floor(10 * Math.pow(lv, 1.8) + lv * 5);
+  }
+  return { maxLevel, expTable: exp, spTable: sp };
+}
+
+async function loadStaticGameData() {
+  const files = ['classes', 'skills', 'items', 'monsters', 'zones'];
+  const data = {};
+  for (const file of files) {
+    const res = await fetch(new URL(`data/${file}.json`, BASE));
+    if (!res.ok) throw new Error(`Failed to load data/${file}.json`);
+    data[file] = await res.json();
+  }
+  data.experience = generateExpTable(80);
+  return data;
+}
+
 async function loadGameData() {
-  const res = await fetch('/api/data');
-  GAME_DATA = await res.json();
+  try {
+    const res = await fetch(new URL('api/data', BASE));
+    if (res.ok) {
+      GAME_DATA = await res.json();
+      useServerApi = true;
+      return;
+    }
+  } catch {
+    // GitHub Pages and other static hosts have no backend API
+  }
+
+  GAME_DATA = await loadStaticGameData();
+  useServerApi = false;
 }
 
 function getItem(id) { return GAME_DATA.items.items.find(i => i.id === id); }
@@ -1004,6 +1040,40 @@ function togglePanel(name) {
 }
 
 // ===== SAVE / LOAD =====
+const STORAGE_KEY = 'l2reborn_saves';
+
+function readLocalSaves() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalSave(id, data) {
+  const saves = readLocalSaves();
+  saves[id] = data;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saves));
+}
+
+function deleteLocalSave(id) {
+  const saves = readLocalSaves();
+  delete saves[id];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saves));
+}
+
+function mapSaveEntry(id, data) {
+  return {
+    id,
+    name: data.name,
+    level: data.level,
+    class: data.className,
+    race: data.raceName,
+    zone: data.zone,
+    updatedAt: data.updatedAt,
+  };
+}
+
 async function saveGame() {
   const p = state.player;
   const data = {
@@ -1011,29 +1081,75 @@ async function saveGame() {
     cooldowns: state.cooldowns,
     updatedAt: new Date().toISOString(),
   };
+
   try {
-    const res = await fetch('/api/saves', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    const result = await res.json();
-    if (result.ok) addLog('Игра сохранена!', 'system');
-  } catch (e) {
-    addLog('Ошибка сохранения', 'system');
+    if (useServerApi) {
+      const res = await fetch(new URL('api/saves', BASE), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (result.ok) {
+        addLog('Игра сохранена!', 'system');
+        return;
+      }
+    }
+  } catch {
+    // Fall back to browser storage on static hosts
   }
+
+  writeLocalSave(data.saveId, data);
+  addLog('Игра сохранена в браузере!', 'system');
 }
 
 async function loadSaves() {
-  const res = await fetch('/api/saves');
-  return await res.json();
+  try {
+    if (useServerApi) {
+      const res = await fetch(new URL('api/saves', BASE));
+      if (res.ok) return await res.json();
+    }
+  } catch {
+    // Fall back to browser storage on static hosts
+  }
+
+  return Object.entries(readLocalSaves()).map(([id, data]) => mapSaveEntry(id, data));
 }
 
 async function loadGame(saveId) {
-  const res = await fetch(`/api/saves/${saveId}`);
-  const data = await res.json();
+  let data = null;
+
+  try {
+    if (useServerApi) {
+      const res = await fetch(new URL(`api/saves/${saveId}`, BASE));
+      if (res.ok) data = await res.json();
+    }
+  } catch {
+    // Fall back to browser storage on static hosts
+  }
+
+  if (!data) data = readLocalSaves()[saveId];
+  if (!data) return;
+
   state.player = data;
   state.cooldowns = data.cooldowns || {};
   state.buffs = [];
   state.dead = false;
   loadZone(data.zone);
   startGameLoop();
+}
+
+async function deleteSave(saveId) {
+  try {
+    if (useServerApi) {
+      await fetch(new URL(`api/saves/${saveId}`, BASE), { method: 'DELETE' });
+      return;
+    }
+  } catch {
+    // Fall back to browser storage on static hosts
+  }
+
+  deleteLocalSave(saveId);
 }
 
 // ===== SCREENS =====
@@ -1091,7 +1207,7 @@ async function showLoadScreen() {
     el.querySelector('.save-info').onclick = () => { loadGame(save.id); showScreen('screen-game'); };
     el.querySelector('.save-delete').onclick = async (e) => {
       e.stopPropagation();
-      await fetch(`/api/saves/${save.id}`, { method: 'DELETE' });
+      await deleteSave(save.id);
       showLoadScreen();
     };
     list.appendChild(el);
