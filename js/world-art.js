@@ -32,6 +32,20 @@ export function drawParallax(ctx, zone, cx, cy, w, h, time) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h * 0.55);
 
+  // Stars (night / dark zones)
+  if (zone.id !== 'talking_island' && zone.id !== 'windy_plains') {
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 40; i++) {
+      const sx = (hash(i * 3, i * 7) * w + time * 0.008 * (i % 3 + 1)) % w;
+      const sy = hash(i * 11, i * 5) * h * 0.42;
+      const tw = 0.4 + Math.sin(time / 900 + i) * 0.35;
+      ctx.globalAlpha = tw;
+      const sz = hash(i, i * 2) > 0.85 ? 2 : 1;
+      ctx.fillRect(sx, sy, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // Distant mountains
   ctx.fillStyle = shade(c2, -20);
   for (let i = 0; i < 6; i++) {
@@ -345,22 +359,28 @@ export function drawAmbientParticles(ctx, particles, cx, cy, w, h, time) {
 
     const alpha = 0.3 + Math.sin(p.life * 3) * 0.3;
     if (p.type === 'firefly') {
-      ctx.fillStyle = `rgba(200,255,100,${alpha})`;
-      ctx.shadowColor = '#aaff00';
-      ctx.shadowBlur = 6;
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.size * 3);
+      g.addColorStop(0, `rgba(220,255,140,${alpha})`);
+      g.addColorStop(1, 'rgba(100,200,50,0)');
+      ctx.fillStyle = g;
     } else if (p.type === 'ember') {
-      ctx.fillStyle = `rgba(255,100,30,${alpha})`;
-      ctx.shadowColor = '#ff4400';
-      ctx.shadowBlur = 4;
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.size * 4);
+      g.addColorStop(0, `rgba(255,180,80,${alpha})`);
+      g.addColorStop(0.5, `rgba(255,80,30,${alpha * 0.5})`);
+      g.addColorStop(1, 'rgba(255,40,0,0)');
+      ctx.fillStyle = g;
     } else if (p.type === 'dust') {
       ctx.fillStyle = `rgba(180,160,200,${alpha * 0.5})`;
-      ctx.shadowBlur = 0;
     } else {
       ctx.fillStyle = `rgba(200,180,140,${alpha * 0.4})`;
-      ctx.shadowBlur = 0;
     }
-    ctx.fillRect(sx, sy, p.size, p.size);
-    ctx.shadowBlur = 0;
+    if (p.type === 'firefly' || p.type === 'ember') {
+      ctx.beginPath();
+      ctx.arc(sx, sy, p.size * 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(sx, sy, p.size, p.size);
+    }
   }
 }
 
@@ -373,12 +393,19 @@ export function drawRemoteSkillFx(ctx, fx, cx, cy, time) {
 
   ctx.save();
   ctx.globalAlpha = 1 - age;
-  ctx.strokeStyle = '#ffaa44';
-  ctx.lineWidth = 3;
-  ctx.shadowColor = '#ff8800';
-  ctx.shadowBlur = 10;
+  const r = 10 + age * 35;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, 'rgba(255,220,120,0.9)');
+  g.addColorStop(0.4, 'rgba(255,140,40,0.4)');
+  g.addColorStop(1, 'rgba(255,80,0,0)');
+  ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(x, y, 10 + age * 30, 0, Math.PI * 2);
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffcc66';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
   return true;
