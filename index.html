@@ -18,41 +18,9 @@
       <p class="game-subtitle">Reborn</p>
       <div class="title-buttons">
         <button class="btn-l2 btn-primary" id="btn-new-game">Новая Игра</button>
-        <button class="btn-l2" id="btn-multiplayer">🌐 Мультиплеер</button>
         <button class="btn-l2" id="btn-load-game">Загрузить</button>
       </div>
-      <p class="title-hint">WASD — движение · Tab — цель · Enter — чат · Мультиплеер работает на GitHub Pages</p>
-    </div>
-  </div>
-
-  <!-- Multiplayer Lobby -->
-  <div id="screen-multiplayer" class="screen">
-    <div class="create-panel mp-panel">
-      <h2>🌐 Мультиплеер</h2>
-      <p class="mp-desc">P2P через WebRTC — работает на GitHub Pages без сервера</p>
-
-      <div class="mp-section">
-        <h3>Создать комнату</h3>
-        <p class="mp-hint">Создайте комнату и отправьте код другу</p>
-        <button class="btn-l2 btn-primary" id="btn-create-room">Создать комнату</button>
-      </div>
-
-      <div class="mp-divider">или</div>
-
-      <div class="mp-section">
-        <h3>Войти в комнату</h3>
-        <input type="text" id="room-code-input" maxlength="6" placeholder="Код комнаты (6 символов)" autocomplete="off" style="text-transform:uppercase">
-        <button class="btn-l2 btn-primary" id="btn-join-room">Войти</button>
-      </div>
-
-      <div id="room-info" class="room-info hidden">
-        <p>Код комнаты: <strong id="room-code-display">------</strong></p>
-        <p class="mp-hint">Отправьте ссылку другу:</p>
-        <input type="text" id="room-link" readonly>
-        <button class="btn-l2" id="btn-copy-link">📋 Копировать ссылку</button>
-      </div>
-
-      <button class="btn-l2" id="btn-mp-back">← Назад</button>
+      <p class="title-hint">WASD — движение · Tab — цель · Enter — чат · Общий онлайн-мир — все игроки видят друг друга автоматически</p>
     </div>
   </div>
 
@@ -127,8 +95,7 @@
         </div>
       </div>
       <div class="hud-right">
-        <span id="mp-status" class="mp-solo">⚪ Solo</span>
-        <span id="hud-room" class="hud-room"></span>
+        <span id="mp-status" class="mp-solo">⚪ Подключение...</span>
         <span id="hud-zone" class="zone-name">Talking Island</span>
         <span id="hud-adena" class="adena">💰 0</span>
       </div>
