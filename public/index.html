@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lineage II: Reborn</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Title Screen -->
+  <div id="screen-title" class="screen active">
+    <div class="title-bg"></div>
+    <div class="title-content">
+      <h1 class="game-title">Lineage <span>II</span></h1>
+      <p class="game-subtitle">Reborn</p>
+      <div class="title-buttons">
+        <button class="btn-l2 btn-primary" id="btn-new-game">Новая Игра</button>
+        <button class="btn-l2" id="btn-load-game">Загрузить</button>
+      </div>
+      <p class="title-hint">WASD — движение · Tab — цель · 1-3 — скиллы · E — NPC · I — инвентарь</p>
+    </div>
+  </div>
+
+  <!-- Character Creation -->
+  <div id="screen-create" class="screen">
+    <div class="create-panel">
+      <h2>Создание Персонажа</h2>
+      <div class="create-form">
+        <div class="form-group">
+          <label>Имя персонажа</label>
+          <input type="text" id="char-name" maxlength="16" placeholder="Введите имя..." autocomplete="off">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Раса</label>
+            <div id="race-list" class="option-list"></div>
+          </div>
+          <div class="form-group">
+            <label>Класс</label>
+            <div id="class-list" class="option-list"></div>
+          </div>
+        </div>
+        <div id="class-desc" class="class-desc"></div>
+        <div class="create-buttons">
+          <button class="btn-l2" id="btn-back-title">← Назад</button>
+          <button class="btn-l2 btn-primary" id="btn-start-game">Начать Приключение</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Game -->
+  <div id="screen-load" class="screen">
+    <div class="load-panel">
+      <h2>Загрузка Персонажа</h2>
+      <div id="save-list" class="save-list"></div>
+      <button class="btn-l2" id="btn-back-load">← Назад</button>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="screen-game" class="screen">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Top HUD -->
+    <div id="hud-top">
+      <div class="char-info">
+        <span id="hud-name" class="char-name">Hero</span>
+        <span id="hud-level" class="char-level">Lv.1</span>
+        <span id="hud-class" class="char-class">Warrior</span>
+      </div>
+      <div class="bars">
+        <div class="bar-row">
+          <span class="bar-label">HP</span>
+          <div class="bar hp-bar"><div id="bar-hp" class="bar-fill"></div><span id="text-hp" class="bar-text">100/100</span></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">MP</span>
+          <div class="bar mp-bar"><div id="bar-mp" class="bar-fill"></div><span id="text-mp" class="bar-text">50/50</span></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">CP</span>
+          <div class="bar cp-bar"><div id="bar-cp" class="bar-fill"></div><span id="text-cp" class="bar-text">50/50</span></div>
+        </div>
+        <div class="bar-row xp-row">
+          <span class="bar-label">EXP</span>
+          <div class="bar xp-bar"><div id="bar-xp" class="bar-fill"></div><span id="text-xp" class="bar-text">0%</span></div>
+        </div>
+      </div>
+      <div class="hud-right">
+        <span id="hud-zone" class="zone-name">Talking Island</span>
+        <span id="hud-adena" class="adena">💰 0</span>
+      </div>
+    </div>
+
+    <!-- Target Frame -->
+    <div id="target-frame" class="hidden">
+      <div class="target-name" id="target-name">Гремлин</div>
+      <div class="bar hp-bar target-bar"><div id="target-hp" class="bar-fill"></div></div>
+      <div class="target-level" id="target-level">Lv.1</div>
+    </div>
+
+    <!-- Skill Bar -->
+    <div id="skill-bar">
+      <div class="skill-slot" data-slot="0"><span class="skill-key">1</span><span class="skill-icon" id="skill-0">⚔️</span><div class="skill-cd" id="cd-0"></div></div>
+      <div class="skill-slot" data-slot="1"><span class="skill-key">2</span><span class="skill-icon" id="skill-1">📢</span><div class="skill-cd" id="cd-1"></div></div>
+      <div class="skill-slot" data-slot="2"><span class="skill-key">3</span><span class="skill-icon" id="skill-2">🛡️</span><div class="skill-cd" id="cd-2"></div></div>
+      <div class="skill-slot attack-slot" data-slot="3"><span class="skill-key">Space</span><span class="skill-icon">👊</span></div>
+    </div>
+
+    <!-- Minimap -->
+    <div id="minimap">
+      <canvas id="minimap-canvas" width="160" height="120"></canvas>
+      <div id="minimap-label">Minimap</div>
+    </div>
+
+    <!-- Combat Log -->
+    <div id="combat-log"></div>
+
+    <!-- Action buttons -->
+    <div id="action-buttons">
+      <button class="btn-action" id="btn-inventory" title="Инвентарь (I)">🎒</button>
+      <button class="btn-action" id="btn-stats" title="Характеристики (C)">📊</button>
+      <button class="btn-action" id="btn-save" title="Сохранить (F5)">💾</button>
+      <button class="btn-action" id="btn-menu" title="Меню (Esc)">⚙️</button>
+    </div>
+
+    <!-- Inventory Panel -->
+    <div id="panel-inventory" class="panel hidden">
+      <div class="panel-header">
+        <h3>Инвентарь</h3>
+        <button class="panel-close">✕</button>
+      </div>
+      <div class="panel-body">
+        <div class="equip-slots">
+          <div class="equip-slot" data-slot="weapon"><span class="slot-label">Оружие</span><span class="slot-item" id="eq-weapon">—</span></div>
+          <div class="equip-slot" data-slot="chest"><span class="slot-label">Броня</span><span class="slot-item" id="eq-chest">—</span></div>
+          <div class="equip-slot" data-slot="shield"><span class="slot-label">Щит</span><span class="slot-item" id="eq-shield">—</span></div>
+          <div class="equip-slot" data-slot="boots"><span class="slot-label">Обувь</span><span class="slot-item" id="eq-boots">—</span></div>
+        </div>
+        <div id="inv-grid" class="inv-grid"></div>
+      </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div id="panel-stats" class="panel hidden">
+      <div class="panel-header">
+        <h3>Характеристики</h3>
+        <button class="panel-close">✕</button>
+      </div>
+      <div class="panel-body stats-body">
+        <div id="stats-content"></div>
+      </div>
+    </div>
+
+    <!-- Shop Panel -->
+    <div id="panel-shop" class="panel hidden">
+      <div class="panel-header">
+        <h3 id="shop-title">Магазин</h3>
+        <button class="panel-close">✕</button>
+      </div>
+      <div class="panel-body">
+        <div id="shop-items" class="shop-grid"></div>
+      </div>
+    </div>
+
+    <!-- Dialog Panel -->
+    <div id="panel-dialog" class="panel hidden">
+      <div class="panel-header">
+        <h3 id="dialog-npc">NPC</h3>
+        <button class="panel-close">✕</button>
+      </div>
+      <div class="panel-body">
+        <p id="dialog-text"></p>
+        <div id="dialog-actions"></div>
+      </div>
+    </div>
+
+    <!-- Menu Panel -->
+    <div id="panel-menu" class="panel hidden">
+      <div class="panel-header">
+        <h3>Меню</h3>
+        <button class="panel-close">✕</button>
+      </div>
+      <div class="panel-body menu-body">
+        <button class="btn-l2 btn-primary" id="btn-save-menu">💾 Сохранить игру</button>
+        <button class="btn-l2" id="btn-quit">🚪 Выйти в меню</button>
+      </div>
+    </div>
+
+    <!-- Level Up -->
+    <div id="levelup-popup" class="popup hidden">
+      <div class="popup-content">
+        <h2>⬆ LEVEL UP!</h2>
+        <p id="levelup-text">Уровень 2</p>
+      </div>
+    </div>
+
+    <!-- Death Screen -->
+    <div id="death-screen" class="overlay hidden">
+      <div class="death-content">
+        <h2>Вы погибли</h2>
+        <p>Возрождение через <span id="respawn-timer">5</span> сек...</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/game.js"></script>
+</body>
+</html>

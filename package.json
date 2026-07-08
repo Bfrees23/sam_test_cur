@@ -1,0 +1,15 @@
+{
+  "name": "lineage2-reborn",
+  "version": "1.0.0",
+  "description": "Lineage 2 inspired browser MMORPG — all data and saves stored in repository",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["game", "mmorpg", "lineage2", "rpg"],
+  "license": "MIT"
+}
