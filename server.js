@@ -144,9 +144,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Static files
+  // Static files (root — GitHub Pages compatible layout)
   let staticPath = pathname === '/' ? '/index.html' : pathname;
-  const filePath = path.join(ROOT, 'public', staticPath);
+  const filePath = path.join(ROOT, staticPath.replace(/^\//, ''));
 
   if (filePath.startsWith(ROOT) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     serveStatic(req, res, filePath);
