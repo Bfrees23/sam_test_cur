@@ -1,0 +1,31 @@
+{
+  "items": [
+    { "id": "sword_bronze", "name": "Бронзовый Меч", "type": "weapon", "slot": "weapon", "grade": "D", "patk": 25, "matk": 0, "price": 500, "icon": "🗡️" },
+    { "id": "greatsword_iron", "name": "Железный Двуручник", "type": "weapon", "slot": "weapon", "grade": "D", "patk": 35, "matk": 0, "price": 800, "icon": "⚔️" },
+    { "id": "staff_apprentice", "name": "Посох Ученика", "type": "weapon", "slot": "weapon", "grade": "D", "patk": 5, "matk": 30, "price": 600, "icon": "🪄" },
+    { "id": "mace_blessed", "name": "Благословенная Булава", "type": "weapon", "slot": "weapon", "grade": "D", "patk": 20, "matk": 15, "price": 700, "icon": "🔨" },
+    { "id": "dagger_sharp", "name": "Острый Кинжал", "type": "weapon", "slot": "weapon", "grade": "D", "patk": 22, "matk": 0, "price": 450, "icon": "🔪" },
+    { "id": "bow_elven", "name": "Эльфийский Лук", "type": "weapon", "slot": "weapon", "grade": "D", "patk": 28, "matk": 0, "price": 750, "icon": "🏹" },
+    { "id": "sword_steel", "name": "Стальной Меч", "type": "weapon", "slot": "weapon", "grade": "C", "patk": 45, "matk": 0, "price": 2500, "icon": "🗡️", "level": 20 },
+    { "id": "staff_mage", "name": "Посох Мага", "type": "weapon", "slot": "weapon", "grade": "C", "patk": 8, "matk": 55, "price": 3000, "icon": "🪄", "level": 20 },
+    { "id": "sword_crystal", "name": "Кристальный Меч", "type": "weapon", "slot": "weapon", "grade": "B", "patk": 80, "matk": 10, "price": 15000, "icon": "💎", "level": 40 },
+    { "id": "armor_leather", "name": "Кожаная Броня", "type": "armor", "slot": "chest", "grade": "D", "pdef": 20, "mdef": 5, "price": 400, "icon": "🦺" },
+    { "id": "armor_chain", "name": "Кольчуга", "type": "armor", "slot": "chest", "grade": "D", "pdef": 35, "mdef": 8, "price": 900, "icon": "⛓️" },
+    { "id": "armor_light", "name": "Лёгкая Броня", "type": "armor", "slot": "chest", "grade": "D", "pdef": 15, "mdef": 5, "price": 350, "icon": "🧥" },
+    { "id": "robe_mystic", "name": "Мантия Мистика", "type": "armor", "slot": "chest", "grade": "D", "pdef": 8, "mdef": 30, "price": 500, "icon": "👘" },
+    { "id": "robe_cleric", "name": "Ряса Клирика", "type": "armor", "slot": "chest", "grade": "D", "pdef": 12, "mdef": 35, "price": 550, "icon": "⛪" },
+    { "id": "armor_plate", "name": "Латная Броня", "type": "armor", "slot": "chest", "grade": "C", "pdef": 60, "mdef": 15, "price": 5000, "icon": "🛡️", "level": 20 },
+    { "id": "shield_wood", "name": "Деревянный Щит", "type": "armor", "slot": "shield", "grade": "D", "pdef": 15, "mdef": 5, "price": 300, "icon": "🛡️" },
+    { "id": "shield_holy", "name": "Святой Щит", "type": "armor", "slot": "shield", "grade": "D", "pdef": 20, "mdef": 15, "price": 600, "icon": "✝️" },
+    { "id": "boots_leather", "name": "Кожаные Сапоги", "type": "armor", "slot": "boots", "grade": "D", "pdef": 8, "mdef": 3, "price": 200, "icon": "👢" },
+    { "id": "boots_cloth", "name": "Тканевые Сандалии", "type": "armor", "slot": "boots", "grade": "D", "pdef": 5, "mdef": 8, "price": 150, "icon": "🥿" },
+    { "id": "boots_shadow", "name": "Теневые Сапоги", "type": "armor", "slot": "boots", "grade": "D", "pdef": 6, "mdef": 5, "price": 250, "icon": "👟" },
+    { "id": "hp_potion", "name": "Зелье HP", "type": "consumable", "slot": "consumable", "grade": "none", "heal": 200, "price": 50, "icon": "🧪", "stackable": true },
+    { "id": "mp_potion", "name": "Зелье MP", "type": "consumable", "slot": "consumable", "grade": "none", "mana": 150, "price": 60, "icon": "💧", "stackable": true },
+    { "id": "hp_potion_great", "name": "Большое Зелье HP", "type": "consumable", "slot": "consumable", "grade": "none", "heal": 500, "price": 200, "icon": "🍶", "stackable": true, "level": 20 },
+    { "id": "scroll_teleport", "name": "Свиток Телепорта", "type": "consumable", "slot": "consumable", "grade": "none", "teleport": true, "price": 500, "icon": "📜", "stackable": true },
+    { "id": "soulshot_d", "name": "Soulshot: Grade D", "type": "consumable", "slot": "consumable", "grade": "D", "patkBoost": 1.2, "price": 5, "icon": "💫", "stackable": true },
+    { "id": "spiritshot_d", "name": "Spiritshot: Grade D", "type": "consumable", "slot": "consumable", "grade": "D", "matkBoost": 1.2, "price": 5, "icon": "✴️", "stackable": true },
+    { "id": "adena", "name": "Adena", "type": "currency", "slot": "none", "grade": "none", "price": 1, "icon": "💰" }
+  ]
+}

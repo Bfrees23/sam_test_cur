@@ -1,0 +1,23 @@
+{
+  "skills": [
+    { "id": "power_strike", "name": "Мощный Удар", "desc": "Мощный удар мечом", "type": "physical", "mp": 15, "cooldown": 3, "damage": 1.8, "range": 80, "icon": "⚔️" },
+    { "id": "war_cry", "name": "Боевой Крик", "desc": "Увеличивает атаку на 30 сек", "type": "buff", "mp": 25, "cooldown": 60, "buff": { "patk": 1.3, "duration": 30 }, "icon": "📢" },
+    { "id": "shield_bash", "name": "Удар Щитом", "desc": "Оглушает врага", "type": "physical", "mp": 20, "cooldown": 8, "damage": 1.2, "stun": 2, "range": 60, "icon": "🛡️" },
+    { "id": "spinning_slash", "name": "Вихрь", "desc": "Урон всем вокруг", "type": "physical", "mp": 30, "cooldown": 6, "damage": 1.5, "aoe": 120, "icon": "🌀" },
+    { "id": "frenzy", "name": "Ярость", "desc": "Увеличивает скорость атаки", "type": "buff", "mp": 35, "cooldown": 45, "buff": { "aspd": 1.5, "duration": 20 }, "icon": "🔥" },
+    { "id": "mortal_blow", "name": "Смертельный Удар", "desc": "Огромный урон одной цели", "type": "physical", "mp": 40, "cooldown": 12, "damage": 3.0, "range": 80, "icon": "💀" },
+    { "id": "fireball", "name": "Огненный Шар", "desc": "Магический урон огнём", "type": "magic", "mp": 25, "cooldown": 2, "damage": 2.0, "element": "fire", "range": 300, "icon": "🔥" },
+    { "id": "ice_bolt", "name": "Ледяная Стрела", "desc": "Замедляет врага", "type": "magic", "mp": 20, "cooldown": 3, "damage": 1.6, "element": "water", "slow": 0.5, "range": 300, "icon": "❄️" },
+    { "id": "mana_shield", "name": "Магический Щит", "desc": "Поглощает урон за счёт MP", "type": "buff", "mp": 50, "cooldown": 90, "buff": { "shield": 0.5, "duration": 30 }, "icon": "🔮" },
+    { "id": "heal", "name": "Исцеление", "desc": "Восстанавливает HP", "type": "heal", "mp": 30, "cooldown": 5, "healPercent": 0.3, "icon": "💚" },
+    { "id": "holy_strike", "name": "Святой Удар", "desc": "Святой урон нежити", "type": "magic", "mp": 25, "cooldown": 4, "damage": 1.8, "element": "holy", "range": 200, "icon": "✨" },
+    { "id": "blessing", "name": "Благословение", "desc": "Увеличивает защиту", "type": "buff", "mp": 40, "cooldown": 60, "buff": { "pdef": 1.4, "mdef": 1.4, "duration": 45 }, "icon": "🙏" },
+    { "id": "backstab", "name": "Удар в Спину", "desc": "Критический урон сзади", "type": "physical", "mp": 20, "cooldown": 5, "damage": 2.5, "crit": true, "range": 60, "icon": "🗡️" },
+    { "id": "poison_blade", "name": "Отравленный Клинок", "desc": "Урон + яд", "type": "physical", "mp": 25, "cooldown": 8, "damage": 1.3, "dot": { "damage": 0.1, "duration": 10 }, "range": 60, "icon": "☠️" },
+    { "id": "evasion", "name": "Уклонение", "desc": "Увеличивает уклонение", "type": "buff", "mp": 30, "cooldown": 45, "buff": { "evasion": 0.5, "duration": 20 }, "icon": "💨" },
+    { "id": "power_shot", "name": "Мощный Выстрел", "desc": "Точный выстрел", "type": "physical", "mp": 15, "cooldown": 3, "damage": 1.7, "range": 400, "icon": "🏹" },
+    { "id": "multi_shot", "name": "Залп", "desc": "Несколько стрел", "type": "physical", "mp": 35, "cooldown": 8, "damage": 1.2, "hits": 3, "range": 350, "icon": "🎯" },
+    { "id": "snipe", "name": "Снайперский Выстрел", "desc": "Огромный урон на дистанции", "type": "physical", "mp": 45, "cooldown": 15, "damage": 3.5, "range": 500, "icon": "🔭" },
+    { "id": "basic_attack", "name": "Атака", "desc": "Базовая атака", "type": "physical", "mp": 0, "cooldown": 0, "damage": 1.0, "range": 80, "icon": "👊" }
+  ]
+}

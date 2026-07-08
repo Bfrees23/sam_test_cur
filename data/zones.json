@@ -1,0 +1,134 @@
+{
+  "zones": [
+    {
+      "id": "talking_island",
+      "name": "Talking Island",
+      "desc": "Остров новичков. Безопасная зона для начала приключения.",
+      "width": 2400,
+      "height": 1800,
+      "bgColor": "#1a3a2a",
+      "groundColor": "#2d5a3d",
+      "levelRange": [1, 10],
+      "spawnPoints": [
+        { "x": 400, "y": 400 },
+        { "x": 800, "y": 600 },
+        { "x": 1200, "y": 500 },
+        { "x": 600, "y": 900 },
+        { "x": 1500, "y": 800 },
+        { "x": 1800, "y": 400 },
+        { "x": 1000, "y": 1200 },
+        { "x": 2000, "y": 1000 }
+      ],
+      "monsters": ["gremlin", "keltir", "wolf", "orc_archer"],
+      "npcs": ["guide", "weapon_merchant", "teleporter"],
+      "connections": [
+        { "to": "gludio_ruins", "x": 2200, "y": 900, "label": "→ Gludio Ruins" }
+      ],
+      "playerSpawn": { "x": 200, "y": 200 }
+    },
+    {
+      "id": "gludio_ruins",
+      "name": "Gludio Ruins",
+      "desc": "Древние руины, полные нежити и паукообразных.",
+      "width": 2800,
+      "height": 2000,
+      "bgColor": "#1a1a2a",
+      "groundColor": "#3a3a4a",
+      "levelRange": [10, 20],
+      "spawnPoints": [
+        { "x": 500, "y": 500 },
+        { "x": 1000, "y": 700 },
+        { "x": 1500, "y": 400 },
+        { "x": 2000, "y": 800 },
+        { "x": 800, "y": 1200 },
+        { "x": 1800, "y": 1400 },
+        { "x": 2400, "y": 600 }
+      ],
+      "monsters": ["skeleton", "zombie", "spider"],
+      "npcs": ["armor_merchant"],
+      "connections": [
+        { "to": "talking_island", "x": 100, "y": 1000, "label": "← Talking Island" },
+        { "to": "orc_barracks", "x": 2600, "y": 1000, "label": "→ Orc Barracks" }
+      ],
+      "playerSpawn": { "x": 150, "y": 1000 }
+    },
+    {
+      "id": "orc_barracks",
+      "name": "Orc Barracks",
+      "desc": "Лагерь орков. Опасная территория для опытных бойцов.",
+      "width": 2600,
+      "height": 2200,
+      "bgColor": "#2a1a1a",
+      "groundColor": "#4a3a2a",
+      "levelRange": [20, 35],
+      "spawnPoints": [
+        { "x": 600, "y": 600 },
+        { "x": 1200, "y": 800 },
+        { "x": 1800, "y": 500 },
+        { "x": 900, "y": 1400 },
+        { "x": 2000, "y": 1200 },
+        { "x": 1500, "y": 1600 }
+      ],
+      "monsters": ["orc_fighter", "orc_shaman", "troll"],
+      "npcs": ["blacksmith"],
+      "connections": [
+        { "to": "gludio_ruins", "x": 100, "y": 1100, "label": "← Gludio Ruins" },
+        { "to": "windy_plains", "x": 2400, "y": 1100, "label": "→ Windy Plains" }
+      ],
+      "playerSpawn": { "x": 150, "y": 1100 }
+    },
+    {
+      "id": "windy_plains",
+      "name": "Windy Plains",
+      "desc": "Бескрайние равнины с гарпиями и другими летающими тварями.",
+      "width": 3000,
+      "height": 2400,
+      "bgColor": "#2a2a1a",
+      "groundColor": "#5a5a3a",
+      "levelRange": [30, 45],
+      "spawnPoints": [
+        { "x": 700, "y": 700 },
+        { "x": 1500, "y": 900 },
+        { "x": 2200, "y": 600 },
+        { "x": 1000, "y": 1600 },
+        { "x": 2500, "y": 1400 }
+      ],
+      "monsters": ["harpy", "troll", "orc_fighter"],
+      "npcs": ["gatekeeper"],
+      "connections": [
+        { "to": "orc_barracks", "x": 100, "y": 1200, "label": "← Orc Barracks" },
+        { "to": "dragon_valley", "x": 2800, "y": 1200, "label": "→ Dragon Valley" }
+      ],
+      "playerSpawn": { "x": 150, "y": 1200 }
+    },
+    {
+      "id": "dragon_valley",
+      "name": "Dragon Valley",
+      "desc": "Логово драконов. Только для самых отважных героев.",
+      "width": 2400,
+      "height": 2000,
+      "bgColor": "#1a0a0a",
+      "groundColor": "#4a2020",
+      "levelRange": [45, 80],
+      "spawnPoints": [
+        { "x": 800, "y": 600 },
+        { "x": 1600, "y": 800 },
+        { "x": 1200, "y": 1400 }
+      ],
+      "monsters": ["wyrm", "troll", "harpy"],
+      "npcs": [],
+      "connections": [
+        { "to": "windy_plains", "x": 100, "y": 1000, "label": "← Windy Plains" }
+      ],
+      "playerSpawn": { "x": 150, "y": 1000 }
+    }
+  ],
+  "npcs": [
+    { "id": "guide", "name": "Гид", "type": "guide", "x": 300, "y": 250, "dialog": ["Добро пожаловать на Talking Island!", "Убивай монстров для получения опыта.", "Нажми Tab для выбора цели, 1-3 для скиллов."] },
+    { "id": "weapon_merchant", "name": "Торговец Оружием", "type": "shop", "shopType": "weapon", "x": 500, "y": 300, "items": ["sword_bronze", "greatsword_iron", "staff_apprentice", "dagger_sharp", "bow_elven", "sword_steel", "staff_mage", "soulshot_d", "spiritshot_d"] },
+    { "id": "armor_merchant", "name": "Торговец Броней", "type": "shop", "shopType": "armor", "x": 400, "y": 600, "items": ["armor_leather", "armor_chain", "armor_plate", "shield_wood", "shield_holy", "boots_leather", "boots_shadow", "hp_potion", "mp_potion", "hp_potion_great"] },
+    { "id": "blacksmith", "name": "Кузнец", "type": "shop", "shopType": "mixed", "x": 500, "y": 500, "items": ["sword_steel", "armor_plate", "sword_crystal", "hp_potion_great", "mp_potion"] },
+    { "id": "teleporter", "name": "Телепортер", "type": "teleport", "x": 350, "y": 500, "destinations": ["talking_island", "gludio_ruins", "orc_barracks"] },
+    { "id": "gatekeeper", "name": "Gatekeeper", "type": "teleport", "x": 400, "y": 400, "destinations": ["talking_island", "gludio_ruins", "orc_barracks", "windy_plains", "dragon_valley"] }
+  ]
+}
