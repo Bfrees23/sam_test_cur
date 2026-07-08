@@ -324,8 +324,22 @@ html, body {
   margin-bottom: 0.2rem;
 }
 .mp-online { color: #66ff66; }
-.mp-solo { color: #ff8866; }
+.mp-solo { color: #aaa; }
 .mp-connecting { color: #ffcc44; }
+.hud-room { display: block; font-size: 0.7rem; color: #88bbff; }
+
+/* Multiplayer lobby */
+.mp-panel { max-width: 480px; }
+.mp-desc { text-align: center; color: var(--text-dim); margin-bottom: 1.5rem; font-size: 0.9rem; }
+.mp-section { margin-bottom: 1.2rem; }
+.mp-section h3 { font-family: 'Cinzel', serif; color: var(--text-gold); font-size: 0.95rem; margin-bottom: 0.4rem; }
+.mp-hint { color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.6rem; }
+.mp-section input { width: 100%; padding: 0.6rem; margin-bottom: 0.6rem; background: rgba(0,0,0,0.5); border: 1px solid var(--border-dark); color: var(--text-light); font-size: 1.1rem; letter-spacing: 0.2em; text-align: center; }
+.mp-divider { text-align: center; color: var(--text-dim); margin: 1rem 0; font-size: 0.85rem; }
+.room-info { background: rgba(0,0,0,0.4); border: 1px solid var(--border-gold); padding: 1rem; margin: 1rem 0; text-align: center; }
+.room-info strong { color: var(--text-gold); font-size: 1.4rem; letter-spacing: 0.15em; }
+#room-link { width: 100%; padding: 0.5rem; margin: 0.5rem 0; background: rgba(0,0,0,0.5); border: 1px solid var(--border-dark); color: var(--text-dim); font-size: 0.75rem; }
+#btn-mp-back { margin-top: 1rem; display: block; margin-left: auto; margin-right: auto; }
 
 /* Online panel */
 #online-panel {
