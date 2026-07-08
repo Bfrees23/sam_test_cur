@@ -6,7 +6,7 @@ import {
   drawTerrain, drawPortal, drawPlayer, drawMonster, drawNpc,
   drawProjectile, drawParticle, drawMoveMarker,
 } from './sprites.js';
-import { createNetwork, getShareUrl, getRoomFromUrl } from './network.js';
+import { createNetwork } from './network.js';
 import {
   drawParallax, generateZoneDecorations, drawDecorations,
   initAmbientParticles, updateAmbientParticles, drawAmbientParticles,
@@ -51,8 +51,6 @@ const state = {
   ambientParticles: [],
   remoteFx: [],
   chatOpen: false,
-  mpMode: null, // null | 'host' | 'join'
-  mpRoomCode: null,
 };
 
 // ===== DATA LOADING =====
@@ -1235,87 +1233,37 @@ async function showLoadScreen() {
 
 // ===== MULTIPLAYER & CHAT =====
 function initMultiplayer() {
-  if (!state.mpMode) {
-    updateMpStatus('solo');
-    return;
-  }
-
+  network?.disconnect();
   network = createNetwork(state, {
     onStatus: (status, count) => updateMpStatus(status, count),
-    onRoom: (code) => {
-      state.mpRoomCode = code;
-      const el = document.getElementById('hud-room');
-      if (el) el.textContent = `Комната: ${code}`;
-    },
     onPlayersUpdate: updateOnlineList,
     onChat: appendChatMessage,
     onSkillFx: (msg) => {
       state.remoteFx.push({ x: msg.x, y: msg.y, startTime: performance.now() });
     },
   });
-
-  const p = state.player;
-  if (state.mpMode === 'host') {
-    network.createRoom(p).then((code) => {
-      const url = getShareUrl(code);
-      appendChatMessage({ type: 'system', text: `Комната ${code} создана!` });
-      appendChatMessage({ type: 'system', text: `Ссылка: ${url}` });
-    }).catch(() => {
-      appendChatMessage({ type: 'system', text: 'Ошибка создания комнаты' });
-      updateMpStatus('error');
-    });
-  } else if (state.mpMode === 'join' && state.mpRoomCode) {
-    network.joinRoom(state.mpRoomCode, p).then(() => {
-      appendChatMessage({ type: 'system', text: `Подключено к комнате ${state.mpRoomCode}` });
-    }).catch(() => {
-      appendChatMessage({ type: 'system', text: 'Не удалось подключиться. Проверьте код комнаты.' });
-      updateMpStatus('error');
-    });
-  }
-}
-
-function showMultiplayerLobby() {
-  showScreen('screen-multiplayer');
-  document.getElementById('room-info').classList.add('hidden');
-  const urlRoom = getRoomFromUrl();
-  if (urlRoom) {
-    document.getElementById('room-code-input').value = urlRoom;
-  }
-}
-
-function startMultiplayerHost() {
-  state.mpMode = 'host';
-  state.mpRoomCode = null;
-  initCharacterCreation();
-  showScreen('screen-create');
-}
-
-function startMultiplayerJoin() {
-  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
-  if (code.length < 4) { alert('Введите код комнаты (минимум 4 символа)'); return; }
-  state.mpMode = 'join';
-  state.mpRoomCode = code;
-  initCharacterCreation();
-  showScreen('screen-create');
+  network.connectWorld(state.player);
 }
 
 function updateMpStatus(status, count) {
   const el = document.getElementById('mp-status');
   if (!el) return;
-  if (status === 'online') {
-    el.textContent = state.mpRoomCode
-      ? `🟢 Комната ${state.mpRoomCode} · ${count || 1} игр.`
-      : `🟢 Online: ${count || 1}`;
-    el.className = 'mp-online';
-  } else if (status === 'solo') {
-    el.textContent = '⚪ Solo';
-    el.className = 'mp-solo';
-  } else if (status === 'error') {
-    el.textContent = '🔴 Ошибка подключения';
-    el.className = 'mp-solo';
-  } else {
-    el.textContent = '🟡 Подключение...';
-    el.className = 'mp-connecting';
+  switch (status) {
+    case 'online':
+      el.textContent = `🟢 Мир online · ${count || 1} игр.`;
+      el.className = 'mp-online';
+      break;
+    case 'connecting':
+      el.textContent = '🟡 Подключение к миру...';
+      el.className = 'mp-connecting';
+      break;
+    case 'reconnecting':
+      el.textContent = '🟡 Переподключение...';
+      el.className = 'mp-connecting';
+      break;
+    default:
+      el.textContent = '⚪ Offline';
+      el.className = 'mp-solo';
   }
 }
 
@@ -1324,7 +1272,7 @@ function updateOnlineList() {
   if (!list) return;
   const others = Object.values(state.otherPlayers);
   if (others.length === 0) {
-    list.innerHTML = '<div class="online-empty">Нет других игроков в зоне</div>';
+    list.innerHTML = '<div class="online-empty">Пока никого рядом</div>';
     return;
   }
   list.innerHTML = others.map(p =>
@@ -1365,8 +1313,6 @@ function sendChatMessage() {
   if (!text) return;
   if (network?.sendChat(text)) {
     appendChatMessage({ type: 'self', name: state.player.name, text });
-  } else {
-    appendChatMessage({ type: 'system', text: 'Подключитесь к комнате для чата' });
   }
   input.value = '';
 }
@@ -1463,20 +1409,10 @@ function setupInput() {
   window.addEventListener('resize', () => { if (canvas) resizeCanvas(); });
 
   // UI buttons
-  document.getElementById('btn-new-game').onclick = () => { state.mpMode = null; state.mpRoomCode = null; initCharacterCreation(); showScreen('screen-create'); };
-  document.getElementById('btn-multiplayer').onclick = showMultiplayerLobby;
+  document.getElementById('btn-new-game').onclick = () => { initCharacterCreation(); showScreen('screen-create'); };
   document.getElementById('btn-load-game').onclick = showLoadScreen;
-  document.getElementById('btn-back-title').onclick = () => { state.mpMode = null; showScreen('screen-title'); };
+  document.getElementById('btn-back-title').onclick = () => showScreen('screen-title');
   document.getElementById('btn-back-load').onclick = () => showScreen('screen-title');
-  document.getElementById('btn-mp-back').onclick = () => showScreen('screen-title');
-  document.getElementById('btn-create-room').onclick = startMultiplayerHost;
-  document.getElementById('btn-join-room').onclick = startMultiplayerJoin;
-  document.getElementById('btn-copy-link').onclick = () => {
-    const link = document.getElementById('room-link');
-    link.select();
-    navigator.clipboard?.writeText(link.value);
-    alert('Ссылка скопирована!');
-  };
   document.getElementById('btn-start-game').onclick = () => {
     const name = document.getElementById('char-name').value.trim();
     if (!name) { alert('Введите имя персонажа!'); return; }
