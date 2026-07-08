@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { attachMultiplayer, getOnlineCount } = require('./server/multiplayer');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -144,6 +145,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API: Online count
+  if (pathname === '/api/online' && req.method === 'GET') {
+    sendJson(res, 200, { online: getOnlineCount() });
+    return;
+  }
+
   // Static files (root — GitHub Pages compatible layout)
   let staticPath = pathname === '/' ? '/index.html' : pathname;
   const filePath = path.join(ROOT, staticPath.replace(/^\//, ''));
@@ -158,8 +165,10 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
+  attachMultiplayer(server);
   console.log(`\n  ⚔️  Lineage II: Reborn`);
   console.log(`  🌐  http://localhost:${PORT}`);
+  console.log(`  🔗  Multiplayer WebSocket: ws://localhost:${PORT}/ws`);
   console.log(`  📁  Data: ${DATA_DIR}`);
   console.log(`  💾  Saves: ${SAVES_DIR}\n`);
 });
