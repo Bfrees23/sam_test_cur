@@ -17,17 +17,50 @@ function shade(hex, amt) {
 }
 
 // ===== PIXEL SPRITE ENGINE =====
-function drawPixelFrame(ctx, rows, palette, x, y, scale, flipX) {
+function drawPixelFrame(ctx, rows, palette, x, y, scale, flipX, withOutline = true) {
   ctx.imageSmoothingEnabled = false;
   const h = rows.length;
   const w = rows[0].length;
   const ox = x - (w * scale) / 2;
   const oy = y - (h * scale) / 2;
 
+  const getCh = (row, col) => {
+    if (row < 0 || row >= h || col < 0 || col >= w) return '.';
+    const ci = flipX ? w - 1 - col : col;
+    return rows[row][ci];
+  };
+
+  // Outline pass
+  if (withOutline) {
+    ctx.fillStyle = OUTLINE;
+    for (let row = 0; row < h; row++) {
+      for (let col = 0; col < w; col++) {
+        const ch = getCh(row, col);
+        if (ch === '.' || ch === ' ') continue;
+        const px = Math.round(ox + col * scale);
+        const py = Math.round(oy + row * scale);
+        const sz = Math.ceil(scale);
+        const hasNeighbor = (
+          getCh(row - 1, col) === '.' &&
+          getCh(row + 1, col) === '.' &&
+          getCh(row, col - 1) === '.' &&
+          getCh(row, col + 1) === '.'
+        );
+        if (hasNeighbor) {
+          ctx.fillRect(px, py, sz, sz);
+        } else {
+          if (getCh(row - 1, col) === '.') ctx.fillRect(px, py - 1, sz, 1);
+          if (getCh(row + 1, col) === '.') ctx.fillRect(px, py + sz, sz, 1);
+          if (getCh(row, col - 1) === '.') ctx.fillRect(px - 1, py, 1, sz);
+          if (getCh(row, col + 1) === '.') ctx.fillRect(px + sz, py, 1, sz);
+        }
+      }
+    }
+  }
+
   for (let row = 0; row < h; row++) {
     for (let col = 0; col < w; col++) {
-      const ci = flipX ? w - 1 - col : col;
-      const ch = rows[row][ci];
+      const ch = getCh(row, col);
       if (ch === '.' || ch === ' ') continue;
       const color = palette[ch];
       if (!color) continue;
@@ -35,12 +68,30 @@ function drawPixelFrame(ctx, rows, palette, x, y, scale, flipX) {
       ctx.fillRect(Math.round(ox + col * scale), Math.round(oy + row * scale), Math.ceil(scale), Math.ceil(scale));
     }
   }
+
+  // Highlight rim (top-left pixel highlight)
+  ctx.globalAlpha = 0.15;
+  ctx.fillStyle = '#ffffff';
+  for (let row = 0; row < h; row++) {
+    for (let col = 0; col < w; col++) {
+      const ch = getCh(row, col);
+      if (ch === '.' || ch === ' ') continue;
+      if (getCh(row - 1, col) === '.' && getCh(row, col - 1) === '.') {
+        ctx.fillRect(Math.round(ox + col * scale), Math.round(oy + row * scale), 1, 1);
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawSpriteShadow(ctx, x, y, spriteW, spriteH, scale) {
-  const sw = spriteW * scale * 0.55;
-  const sh = spriteH * scale * 0.12;
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  const sw = spriteW * scale * 0.58;
+  const sh = spriteH * scale * 0.14;
+  const grad = ctx.createRadialGradient(x, y + spriteH * scale * 0.38, 0, x, y + spriteH * scale * 0.38, sw);
+  grad.addColorStop(0, 'rgba(0,0,0,0.55)');
+  grad.addColorStop(0.6, 'rgba(0,0,0,0.25)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.ellipse(x, y + spriteH * scale * 0.38, sw, sh, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -321,9 +372,13 @@ export function drawNpc(ctx, x, y, npc, time) {
   drawPixelSprite(ctx, sprite, x, y, { bob, animTime: time / 1000, moving: false });
 
   // Quest glow
-  ctx.fillStyle = 'rgba(255,204,0,0.3)';
+  const qg = ctx.createRadialGradient(x, y - 38, 0, x, y - 38, 12 + Math.sin(time / 300) * 3);
+  qg.addColorStop(0, 'rgba(255,220,80,0.7)');
+  qg.addColorStop(0.5, 'rgba(255,180,40,0.25)');
+  qg.addColorStop(1, 'rgba(255,180,40,0)');
+  ctx.fillStyle = qg;
   ctx.beginPath();
-  ctx.arc(x, y - 38, 8 + Math.sin(time / 300) * 2, 0, Math.PI * 2);
+  ctx.arc(x, y - 38, 12 + Math.sin(time / 300) * 3, 0, Math.PI * 2);
   ctx.fill();
 
   drawNameplate(ctx, x, y, npc.name, null, false, 40);
@@ -334,30 +389,55 @@ export function drawProjectile(ctx, proj, cx, cy) {
   const px = proj.x - cx;
   const py = proj.y - cy;
   ctx.save();
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+
+  // Glow core
+  const g = ctx.createRadialGradient(px, py, 0, px, py, 12);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.3, proj.color);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(px, py, 12, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.shadowColor = proj.color;
-  ctx.shadowBlur = 14;
+  ctx.shadowBlur = 16;
   ctx.fillStyle = proj.color;
-  ctx.fillRect(px - 4, py - 4, 8, 8);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(px - 2, py - 2, 4, 4);
+  ctx.beginPath();
+  ctx.arc(px, py, 4, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Trail
-  ctx.globalAlpha = 0.4;
-  ctx.fillStyle = proj.color;
-  ctx.fillRect(px - 8, py - 2, 6, 4);
-  ctx.globalAlpha = 1;
+  // Motion trail
+  const tx = proj.tx ?? proj.x;
+  const ty = proj.ty ?? proj.y;
+  const angle = Math.atan2(ty - proj.y, tx - proj.x);
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = proj.color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(px - Math.cos(angle) * 14, py - Math.sin(angle) * 14);
+  ctx.stroke();
   ctx.restore();
 }
 
 export function drawParticle(ctx, part, cx, cy) {
   ctx.save();
   ctx.globalAlpha = part.life;
-  ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = part.color;
-  const s = Math.ceil(2 + (1 - part.life) * 4);
-  ctx.fillRect(part.x - cx - s / 2, part.y - cy - s / 2, s, s);
+  ctx.imageSmoothingEnabled = true;
+  const px = part.x - cx;
+  const py = part.y - cy;
+  const s = 2 + (1 - part.life) * 5;
+  const g = ctx.createRadialGradient(px, py, 0, px, py, s);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.4, part.color);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(px, py, s, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 

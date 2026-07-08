@@ -12,6 +12,10 @@ import {
   initAmbientParticles, updateAmbientParticles, drawAmbientParticles,
   drawRemoteSkillFx,
 } from './world-art.js';
+import {
+  setupHiDpiCanvas, TerrainTileCache,
+  gatherLights, applyLighting, applyPostFX, renderEnhancedMinimap,
+} from './canvas-fx.js';
 
 const BASE = new URL('./', window.location.href).href;
 
@@ -19,6 +23,8 @@ let GAME_DATA = null;
 let useServerApi = false;
 let network = null;
 let canvas, ctx, minimapCanvas, minimapCtx;
+let hiDpi = null;
+let tileCache = null;
 let gameRunning = false;
 let lastTime = 0;
 
@@ -227,6 +233,7 @@ function loadZone(zoneId) {
 
   state.decorations = generateZoneDecorations(zoneData);
   state.ambientParticles = initAmbientParticles(zoneData);
+  tileCache = new TerrainTileCache(zoneData);
 
   if (network?.isConnected()) {
     network.syncZone(zoneId, state.player.x, state.player.y);
@@ -655,7 +662,11 @@ function render() {
   ctx.fillRect(0, 0, w, h);
 
   drawParallax(ctx, zone, cx, cy, w, h, time);
-  drawTerrain(ctx, zone, cx, cy, w, h);
+  if (tileCache) {
+    tileCache.draw(ctx, cx, cy, w, h);
+  } else {
+    drawTerrain(ctx, zone, cx, cy, w, h);
+  }
   drawAmbientParticles(ctx, state.ambientParticles, cx, cy, w, h, time);
 
   for (const conn of (zone.connections || [])) {
@@ -730,40 +741,17 @@ function render() {
     drawMoveMarker(ctx, state.moveTarget.x, state.moveTarget.y, cx, cy, time);
   }
 
+  // Canvas lighting + post-processing
+  const lights = gatherLights(state, time);
+  applyLighting(ctx, lights, cx, cy, w, h, zone.id, time);
+  applyPostFX(ctx, w, h, zone.id, time);
+
   renderMinimap();
 }
 
 function renderMinimap() {
   if (!minimapCtx || !state.zone) return;
-  const mw = 160, mh = 120;
-  const zone = state.zone;
-  minimapCtx.fillStyle = zone.groundColor || '#2a3a2a';
-  minimapCtx.fillRect(0, 0, mw, mh);
-
-  const sx = mw / zone.width, sy = mh / zone.height;
-
-  for (const m of state.monsters) {
-    if (!m.alive) continue;
-    minimapCtx.fillStyle = m.boss ? '#ff0000' : '#aa4444';
-    minimapCtx.fillRect(m.x * sx - 1, m.y * sy - 1, 3, 3);
-  }
-
-  for (const npc of state.npcs) {
-    minimapCtx.fillStyle = '#4488ff';
-    minimapCtx.fillRect(npc.x * sx - 1, npc.y * sy - 1, 3, 3);
-  }
-
-  // Other players on minimap
-  for (const op of Object.values(state.otherPlayers)) {
-    minimapCtx.fillStyle = '#44aaff';
-    minimapCtx.fillRect(op.x * sx - 1, op.y * sy - 1, 3, 3);
-  }
-
-  // Player
-  minimapCtx.fillStyle = '#ffd700';
-  minimapCtx.beginPath();
-  minimapCtx.arc(state.player.x * sx, state.player.y * sy, 3, 0, Math.PI * 2);
-  minimapCtx.fill();
+  renderEnhancedMinimap(minimapCtx, state);
 }
 
 function spawnParticles(x, y, color, count) {
@@ -1194,7 +1182,17 @@ function updateCharPreview() {
   if (!canvas) return;
   const pctx = canvas.getContext('2d');
   pctx.clearRect(0, 0, canvas.width, canvas.height);
-  pctx.fillStyle = '#1a2a1a';
+  const bg = pctx.createLinearGradient(0, 0, 0, canvas.height);
+  bg.addColorStop(0, '#1a2838');
+  bg.addColorStop(0.5, '#1a2a1a');
+  bg.addColorStop(1, '#0a1018');
+  pctx.fillStyle = bg;
+  pctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Floor spotlight
+  const spot = pctx.createRadialGradient(canvas.width / 2, canvas.height - 20, 0, canvas.width / 2, canvas.height - 20, 60);
+  spot.addColorStop(0, 'rgba(255,220,160,0.15)');
+  spot.addColorStop(1, 'rgba(0,0,0,0)');
+  pctx.fillStyle = spot;
   pctx.fillRect(0, 0, canvas.width, canvas.height);
   drawPlayer(pctx, canvas.width / 2, canvas.height / 2 + 20, {
     raceId: state.selectedRace,
@@ -1321,9 +1319,12 @@ function sendChatMessage() {
 function startGameLoop() {
   showScreen('screen-game');
   canvas = document.getElementById('game-canvas');
-  ctx = canvas.getContext('2d');
+  hiDpi = setupHiDpiCanvas(canvas);
+  const { ctx: c } = hiDpi.resize();
+  ctx = c;
   minimapCanvas = document.getElementById('minimap-canvas');
   minimapCtx = minimapCanvas.getContext('2d');
+  minimapCtx.imageSmoothingEnabled = false;
 
   resizeCanvas();
   gameRunning = true;
@@ -1334,8 +1335,14 @@ function startGameLoop() {
 }
 
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  if (hiDpi && canvas) {
+    const { ctx: c } = hiDpi.resize();
+    ctx = c;
+  } else if (canvas) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    ctx = canvas.getContext('2d');
+  }
 }
 
 function gameLoop(time) {
