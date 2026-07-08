@@ -2,6 +2,11 @@
 // Static mode: game data from data/*.json, saves in localStorage (GitHub Pages)
 // Server mode: optional Node.js API when running npm start locally
 
+import {
+  drawTerrain, drawPortal, drawPlayer, drawMonster, drawNpc,
+  drawProjectile, drawParticle, drawMoveMarker,
+} from './sprites.js';
+
 const BASE = new URL('./', window.location.href).href;
 
 let GAME_DATA = null;
@@ -32,6 +37,8 @@ const state = {
   activeShop: null,
   dead: false,
   respawnTimer: 0,
+  renderTime: 0,
+  playerMoving: false,
 };
 
 // ===== DATA LOADING =====
@@ -120,6 +127,8 @@ function createPlayer(name, raceId, classId) {
     skills: [...cls.skills],
     killCount: 0,
     saveId: name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+    facing: 1,
+    animTime: 0,
   };
 }
 
@@ -220,6 +229,9 @@ function createMonster(data, x, y) {
     slowFactor: 1,
     dotTimer: 0,
     dotDamage: 0,
+    facing: 1,
+    animTime: 0,
+    prevX: x,
   };
 }
 
@@ -609,8 +621,8 @@ function render() {
   if (!p || !zone) return;
 
   const w = canvas.width, h = canvas.height;
+  const time = state.renderTime;
 
-  // Camera
   state.camera.x = p.x - w / 2;
   state.camera.y = p.y - h / 2;
   state.camera.x = Math.max(0, Math.min(zone.width - w, state.camera.x));
@@ -618,144 +630,62 @@ function render() {
 
   const cx = state.camera.x, cy = state.camera.y;
 
-  // Background
   ctx.fillStyle = zone.bgColor || '#1a1a2a';
   ctx.fillRect(0, 0, w, h);
 
-  // Ground grid
-  ctx.fillStyle = zone.groundColor || '#2a3a2a';
-  const gridSize = 80;
-  const startGX = Math.floor(cx / gridSize) * gridSize;
-  const startGY = Math.floor(cy / gridSize) * gridSize;
-  for (let gx = startGX; gx < cx + w; gx += gridSize) {
-    for (let gy = startGY; gy < cy + h; gy += gridSize) {
-      if ((gx / gridSize + gy / gridSize) % 2 === 0) {
-        ctx.globalAlpha = 0.3;
-        ctx.fillRect(gx - cx, gy - cy, gridSize, gridSize);
-        ctx.globalAlpha = 1;
-      }
+  drawTerrain(ctx, zone, cx, cy, w, h);
+
+  for (const conn of (zone.connections || [])) {
+    drawPortal(ctx, conn.x - cx, conn.y - cy, conn.label, time);
+  }
+
+  // Y-sorted entities for depth
+  const entities = [];
+
+  for (const npc of state.npcs) {
+    entities.push({ type: 'npc', y: npc.y, obj: npc });
+  }
+  for (const m of state.monsters) {
+    if (m.alive) entities.push({ type: 'monster', y: m.y, obj: m });
+  }
+  entities.push({ type: 'player', y: p.y, obj: p });
+  entities.sort((a, b) => a.y - b.y);
+
+  for (const ent of entities) {
+    const sx = ent.obj.x - cx;
+    const sy = ent.obj.y - cy;
+
+    if (ent.type === 'npc') {
+      drawNpc(ctx, sx, sy, ent.obj, time);
+    } else if (ent.type === 'monster') {
+      drawMonster(ctx, sx, sy, ent.obj, { isTarget: state.target === ent.obj, time });
+    } else {
+      drawPlayer(ctx, sx, sy, {
+        raceId: p.raceId,
+        classId: p.classId,
+        facing: p.facing || 1,
+        animTime: p.animTime || 0,
+        moving: state.playerMoving,
+        isTarget: false,
+        name: p.name,
+        time,
+      });
     }
   }
 
-  // Zone connections (portals)
-  for (const conn of (zone.connections || [])) {
-    const px = conn.x - cx, py = conn.y - cy;
-    ctx.save();
-    ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 500) * 0.2;
-    const grad = ctx.createRadialGradient(px, py, 5, px, py, 40);
-    grad.addColorStop(0, '#4488ff');
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.fillRect(px - 40, py - 40, 80, 80);
-    ctx.fillStyle = '#88bbff';
-    ctx.font = '11px Roboto';
-    ctx.textAlign = 'center';
-    ctx.fillText(conn.label || '→', px, py + 50);
-    ctx.restore();
-  }
-
-  // NPCs
-  for (const npc of state.npcs) {
-    drawEntity(npc.x - cx, npc.y - cy, 30, '#4488ff', npc.name, '💬', false);
-  }
-
-  // Monsters
-  for (const m of state.monsters) {
-    if (!m.alive) continue;
-    const isTarget = state.target === m;
-    drawEntity(m.x - cx, m.y - cy, m.size || 28, m.color || '#aa4444', m.name, '', isTarget, m.level);
-    // HP bar
-    const bx = m.x - cx - 20, by = m.y - cy - (m.size || 28) / 2 - 10;
-    ctx.fillStyle = '#333';
-    ctx.fillRect(bx, by, 40, 4);
-    ctx.fillStyle = '#cc2222';
-    ctx.fillRect(bx, by, 40 * (m.hp / m.maxHp), 4);
-  }
-
-  // Projectiles
   for (const proj of state.projectiles) {
-    ctx.fillStyle = proj.color;
-    ctx.beginPath();
-    ctx.arc(proj.x - cx, proj.y - cy, 5, 0, Math.PI * 2);
-    ctx.fill();
+    drawProjectile(ctx, proj, cx, cy);
   }
 
-  // Particles
   for (const part of state.particles) {
-    ctx.globalAlpha = part.life;
-    ctx.fillStyle = part.color;
-    ctx.fillRect(part.x - cx - 2, part.y - cy - 2, 4, 4);
-    ctx.globalAlpha = 1;
+    drawParticle(ctx, part, cx, cy);
   }
 
-  // Player
-  drawEntity(p.x - cx, p.y - cy, 32, '#c9a84c', p.name, '⚔️', false);
-
-  // Move target indicator
   if (state.moveTarget) {
-    ctx.strokeStyle = '#ffff0044';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(state.moveTarget.x - cx, state.moveTarget.y - cy, 8, 0, Math.PI * 2);
-    ctx.stroke();
+    drawMoveMarker(ctx, state.moveTarget.x, state.moveTarget.y, cx, cy, time);
   }
 
-  // Minimap
   renderMinimap();
-}
-
-function drawEntity(x, y, size, color, name, icon, isTarget, level) {
-  ctx.save();
-  if (isTarget) {
-    ctx.strokeStyle = '#ff0000';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, size / 2 + 6, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(x, y + size / 3, size / 2.5, size / 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Body
-  const grad = ctx.createRadialGradient(x, y - 5, 2, x, y, size / 2);
-  grad.addColorStop(0, color);
-  grad.addColorStop(1, shadeColor(color, -40));
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Icon
-  if (icon) {
-    ctx.font = `${size * 0.5}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(icon, x, y);
-  }
-
-  // Name
-  ctx.font = '11px Roboto';
-  ctx.fillStyle = isTarget ? '#ff6666' : '#d4c8a8';
-  ctx.textAlign = 'center';
-  ctx.fillText(name, x, y - size / 2 - 8);
-  if (level) {
-    ctx.font = '9px Roboto';
-    ctx.fillStyle = '#88cc88';
-    ctx.fillText(`Lv.${level}`, x, y - size / 2 - 20);
-  }
-  ctx.restore();
-}
-
-function shadeColor(color, amount) {
-  const num = parseInt(color.replace('#', ''), 16);
-  const r = Math.min(255, Math.max(0, (num >> 16) + amount));
-  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xFF) + amount));
-  const b = Math.min(255, Math.max(0, (num & 0xFF) + amount));
-  return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
 }
 
 function renderMinimap() {
@@ -849,6 +779,12 @@ function update(dt) {
   p.x = Math.max(20, Math.min(state.zone.width - 20, p.x));
   p.y = Math.max(20, Math.min(state.zone.height - 20, p.y));
 
+  state.playerMoving = dx !== 0 || dy !== 0;
+  if (state.playerMoving) {
+    if (Math.abs(dx) > 0.1) p.facing = dx < 0 ? -1 : 1;
+    p.animTime = (p.animTime || 0) + dt;
+  }
+
   // Regen
   if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.01 * dt);
   if (p.mp < p.maxMp) p.mp = Math.min(p.maxMp, p.mp + p.maxMp * 0.02 * dt);
@@ -879,10 +815,14 @@ function update(dt) {
 
     if (d < aggroRange) {
       m.aggro = true;
-      const speed = (m.speed || 60) * (m.slowFactor || 1);
+      const mspeed = (m.speed || 60) * (m.slowFactor || 1);
       if (d > 45) {
-        m.x += ((p.x - m.x) / d) * speed * dt;
-        m.y += ((p.y - m.y) / d) * speed * dt;
+        const mx = ((p.x - m.x) / d) * mspeed * dt;
+        const my = ((p.y - m.y) / d) * mspeed * dt;
+        m.x += mx;
+        m.y += my;
+        if (Math.abs(mx) > 0.01) m.facing = mx < 0 ? -1 : 1;
+        m.animTime = (m.animTime || 0) + dt;
       }
       m.attackTimer -= dt;
       if (m.attackTimer <= 0) {
@@ -1169,6 +1109,7 @@ function initCharacterCreation() {
       state.selectedRace = race.id;
       document.querySelectorAll('#race-list .option-item').forEach(e => e.classList.remove('selected'));
       el.classList.add('selected');
+      updateCharPreview();
     };
     raceList.appendChild(el);
   }
@@ -1184,11 +1125,32 @@ function initCharacterCreation() {
       document.querySelectorAll('#class-list .option-item').forEach(e => e.classList.remove('selected'));
       el.classList.add('selected');
       document.getElementById('class-desc').textContent = cls.desc;
+      updateCharPreview();
     };
     classList.appendChild(el);
   }
   const firstClass = getClass(state.selectedClass);
   if (firstClass) document.getElementById('class-desc').textContent = firstClass.desc;
+  updateCharPreview();
+}
+
+function updateCharPreview() {
+  const canvas = document.getElementById('char-preview');
+  if (!canvas) return;
+  const pctx = canvas.getContext('2d');
+  pctx.clearRect(0, 0, canvas.width, canvas.height);
+  pctx.fillStyle = '#1a2a1a';
+  pctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawPlayer(pctx, canvas.width / 2, canvas.height / 2 + 20, {
+    raceId: state.selectedRace,
+    classId: state.selectedClass,
+    facing: 1,
+    animTime: performance.now() / 1000,
+    moving: false,
+    isTarget: false,
+    name: '',
+    time: performance.now(),
+  });
 }
 
 async function showLoadScreen() {
@@ -1238,6 +1200,7 @@ function gameLoop(time) {
   if (!gameRunning) return;
   const dt = Math.min((time - lastTime) / 1000, 0.05);
   lastTime = time;
+  state.renderTime = time;
   update(dt);
   render();
   requestAnimationFrame(gameLoop);
