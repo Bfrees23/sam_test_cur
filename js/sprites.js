@@ -1,6 +1,6 @@
 // 2D Pixel Art Sprite Renderer — Lineage II: Reborn
 
-import { getPlayerSprite, getMonsterSprite, OUTLINE } from './pixel-data.js';
+import { getPlayerSprite, getMonsterSprite, getNpcSprite, OUTLINE } from './pixel-data.js';
 
 export { RACE_PALETTE, CLASS_PALETTE } from './pixel-data.js';
 
@@ -315,8 +315,19 @@ export function drawPlayer(ctx, x, y, opts) {
   const { raceId, classId, facing, animTime, moving, isTarget, name, time } = opts;
   const sprite = getPlayerSprite(raceId, classId);
   const bob = moving ? Math.sin(animTime * 14) * 1.5 : Math.sin(time / 450) * 0.8;
+  const glowColor = sprite.glow || '#88bbff';
 
-  if (isTarget) drawTargetRing(ctx, x, y + bob, 24, time);
+  // Class aura
+  const aura = ctx.createRadialGradient(x, y + bob, 4, x, y + bob, 42);
+  aura.addColorStop(0, glowColor + '33');
+  aura.addColorStop(0.5, glowColor + '18');
+  aura.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aura;
+  ctx.beginPath();
+  ctx.arc(x, y + bob, 42, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (isTarget) drawTargetRing(ctx, x, y + bob, 28, time);
 
   drawPixelSprite(ctx, sprite, x, y, {
     flipX: facing < 0,
@@ -325,7 +336,7 @@ export function drawPlayer(ctx, x, y, opts) {
     bob,
   });
 
-  if (name) drawNameplate(ctx, x, y, name, null, isTarget, 42);
+  if (name) drawNameplate(ctx, x, y, name, null, isTarget, 52);
 }
 
 export function drawMonster(ctx, x, y, monster, opts) {
@@ -342,12 +353,23 @@ export function drawMonster(ctx, x, y, monster, opts) {
 
   // Boss aura
   if (monster.boss) {
-    const aura = ctx.createRadialGradient(x, y, 5, x, y, 50 * sizeScale);
-    aura.addColorStop(0, `rgba(255,60,0,${0.15 + Math.sin(time / 400) * 0.08})`);
+    const aura = ctx.createRadialGradient(x, y, 5, x, y, 55 * sizeScale);
+    aura.addColorStop(0, `rgba(255,60,0,${0.2 + Math.sin(time / 400) * 0.1})`);
+    aura.addColorStop(0.5, `rgba(255,120,0,${0.08 + Math.sin(time / 500) * 0.04})`);
     aura.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = aura;
     ctx.beginPath();
-    ctx.arc(x, y, 50 * sizeScale, 0, Math.PI * 2);
+    ctx.arc(x, y, 55 * sizeScale, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (monster.alive) {
+    // Subtle monster presence glow
+    const mc = monster.color || '#aa4444';
+    const aura = ctx.createRadialGradient(x, y + bob, 2, x, y + bob, 28 * sizeScale);
+    aura.addColorStop(0, mc + '22');
+    aura.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(x, y + bob, 28 * sizeScale, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -366,22 +388,46 @@ export function drawMonster(ctx, x, y, monster, opts) {
 }
 
 export function drawNpc(ctx, x, y, npc, time) {
-  const sprite = getMonsterSprite('npc');
-  const bob = Math.sin(time / 500 + x * 0.01) * 1;
+  const sprite = getNpcSprite(npc);
+  const bob = Math.sin(time / 500 + x * 0.01) * 1.2;
+
+  const glowColors = {
+    guide: ['#66aaff', '#4488cc'],
+    shop: ['#ffcc44', '#ff9922'],
+    teleport: ['#aa66ff', '#6644cc'],
+    blacksmith: ['#ff8844', '#cc5522'],
+  };
+  let glowKey = npc.type || 'default';
+  if (npc.id === 'blacksmith') glowKey = 'blacksmith';
+  const [c1, c2] = glowColors[glowKey] || glowColors.guide;
+
+  const aura = ctx.createRadialGradient(x, y - 20 + bob, 0, x, y - 20 + bob, 28);
+  aura.addColorStop(0, c1 + '55');
+  aura.addColorStop(0.5, c2 + '22');
+  aura.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aura;
+  ctx.beginPath();
+  ctx.arc(x, y - 20 + bob, 28, 0, Math.PI * 2);
+  ctx.fill();
 
   drawPixelSprite(ctx, sprite, x, y, { bob, animTime: time / 1000, moving: false });
 
-  // Quest glow
-  const qg = ctx.createRadialGradient(x, y - 38, 0, x, y - 38, 12 + Math.sin(time / 300) * 3);
-  qg.addColorStop(0, 'rgba(255,220,80,0.7)');
-  qg.addColorStop(0.5, 'rgba(255,180,40,0.25)');
-  qg.addColorStop(1, 'rgba(255,180,40,0)');
+  // Icon marker above head
+  const icons = { guide: '📖', shop: '💰', teleport: '✨', blacksmith: '🔨' };
+  const icon = icons[glowKey] || '❓';
+  const floatY = y - 52 + bob + Math.sin(time / 350) * 3;
+  const qg = ctx.createRadialGradient(x, floatY, 0, x, floatY, 14);
+  qg.addColorStop(0, c1 + 'aa');
+  qg.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = qg;
   ctx.beginPath();
-  ctx.arc(x, y - 38, 12 + Math.sin(time / 300) * 3, 0, Math.PI * 2);
+  ctx.arc(x, floatY, 14, 0, Math.PI * 2);
   ctx.fill();
+  ctx.font = '14px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(icon, x, floatY + 5);
 
-  drawNameplate(ctx, x, y, npc.name, null, false, 40);
+  drawNameplate(ctx, x, y, npc.name, null, false, 48);
 }
 
 // ===== EFFECTS =====
