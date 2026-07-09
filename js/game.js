@@ -3,12 +3,12 @@
 // Server mode: optional Node.js API when running npm start locally
 
 import {
-  drawTerrain, drawPortal, drawPlayer, drawMonster, drawNpc,
-  drawProjectile, drawParticle, drawMoveMarker,
+  drawTerrain, drawPortal, drawPlayer,
+  drawProjectile, drawParticle, drawMoveMarker, getEntityRenderer,
 } from './sprites.js';
 import { createNetwork } from './network.js';
 import {
-  drawParallax, generateZoneDecorations, drawDecorations,
+  drawParallax, generateZoneDecorations,
   initAmbientParticles, updateAmbientParticles, drawAmbientParticles,
   drawRemoteSkillFx,
 } from './world-art.js';
@@ -691,41 +691,12 @@ function render() {
   entities.push({ type: 'player', y: p.y, obj: p });
   entities.sort((a, b) => a.y - b.y);
 
-  for (const ent of entities) {
-    const sx = ent.obj.x - cx;
-    const sy = ent.obj.y - cy;
-
-    if (ent.type === 'deco') {
-      drawDecorations(ctx, [ent.obj], cx, cy, time);
-    } else if (ent.type === 'npc') {
-      drawNpc(ctx, sx, sy, ent.obj, time);
-    } else if (ent.type === 'monster') {
-      drawMonster(ctx, sx, sy, ent.obj, { isTarget: state.target === ent.obj, time });
-    } else if (ent.type === 'other') {
-      const op = ent.obj;
-      drawPlayer(ctx, sx, sy, {
-        raceId: op.raceId,
-        classId: op.classId,
-        facing: op.facing || 1,
-        animTime: op.animTime || 0,
-        moving: op.moving,
-        isTarget: false,
-        name: op.name,
-        time,
-      });
-    } else {
-      drawPlayer(ctx, sx, sy, {
-        raceId: p.raceId,
-        classId: p.classId,
-        facing: p.facing || 1,
-        animTime: p.animTime || 0,
-        moving: state.playerMoving,
-        isTarget: false,
-        name: p.name,
-        time,
-      });
-    }
-  }
+  getEntityRenderer().renderEntities(
+    ctx,
+    entities,
+    { cx, cy, time, viewW: window.innerWidth, viewH: window.innerHeight },
+    { target: state.target, playerMoving: state.playerMoving, player: p },
+  );
 
   state.remoteFx = state.remoteFx.filter(fx => drawRemoteSkillFx(ctx, fx, cx, cy, time));
 
@@ -1330,6 +1301,7 @@ function startGameLoop() {
   gameRunning = true;
   lastTime = performance.now();
   updateHud();
+  getEntityRenderer(); // preload sprite bitmap cache
   initMultiplayer();
   requestAnimationFrame(gameLoop);
 }
